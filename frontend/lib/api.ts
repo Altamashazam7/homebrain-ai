@@ -19,7 +19,19 @@ function isHouseholdPlan(value: unknown): value is HouseholdPlan {
     Number.isFinite(Date.parse(value.created_at)) &&
     isStringArray(value.security_plan) &&
     isStringArray(value.energy_plan) &&
-    isStringArray(value.entertainment_plan)
+    isStringArray(value.entertainment_plan) &&
+    typeof value.ai_summary === "string" &&
+    isStringArray(value.alexa_automations) &&
+    value.alexa_automations.length >= 3 &&
+    value.alexa_automations.length <= 5 &&
+    (value.intent_category === "travel" ||
+      value.intent_category === "family" ||
+      value.intent_category === "newborn" ||
+      value.intent_category === "event" ||
+      value.intent_category === "work_schedule" ||
+      value.intent_category === "energy_saving" ||
+      value.intent_category === "home_security" ||
+      value.intent_category === "general")
   );
 }
 

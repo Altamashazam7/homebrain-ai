@@ -7,16 +7,20 @@ import {
   ArrowDownRight,
   ArrowRight,
   Bot,
+  BadgeCheck,
   Check,
+  Circle,
   ChevronRight,
   CircleAlert,
   Clock3,
+  ClipboardCheck,
   Film,
   House,
   Lightbulb,
   LoaderCircle,
   LockKeyhole,
   MessageCircle,
+  Play,
   Radio,
   Shield,
   Sparkles,
@@ -25,7 +29,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 
 import { fetchDevices, fetchPlanHistory, generatePlan } from "@/lib/api";
-import type { DeviceStatus, HouseholdPlan, PlanSection } from "@/types";
+import type { DeviceStatus, HouseholdPlan, PlanIntent, PlanSection } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -70,6 +74,207 @@ const deviceIcons: Record<string, LucideIcon> = {
   "Fire TV": Film,
   Bee: Bot,
 };
+
+const intentLabels: Record<PlanIntent, string> = {
+  travel: "Travel",
+  family: "Family",
+  newborn: "Newborn care",
+  event: "Hosting an event",
+  work_schedule: "Shift schedule",
+  energy_saving: "Energy saving",
+  home_security: "Home security",
+  general: "General household",
+};
+
+const simulatedDevices: {
+  name: string;
+  icon: LucideIcon;
+  actions: { name: string; intents: PlanIntent[] }[];
+}[] = [
+  {
+    name: "Alexa+",
+    icon: MessageCircle,
+    actions: [
+      { name: "Vacation Mode", intents: ["travel"] },
+      { name: "Party Mode", intents: ["event"] },
+      { name: "Quiet Hours Mode", intents: ["newborn", "work_schedule"] },
+    ],
+  },
+  {
+    name: "Ring",
+    icon: Radio,
+    actions: [
+      { name: "Enhanced Monitoring", intents: ["travel", "home_security"] },
+      { name: "Guest Monitoring", intents: ["event", "family"] },
+      { name: "Sleep Protection", intents: ["newborn", "work_schedule"] },
+    ],
+  },
+  {
+    name: "Fire TV",
+    icon: Film,
+    actions: [
+      { name: "Relaxation Playlist", intents: ["travel", "newborn", "work_schedule"] },
+      { name: "Party Playlist", intents: ["event"] },
+      { name: "Family Content", intents: ["family", "newborn"] },
+    ],
+  },
+  {
+    name: "Bee",
+    icon: Bot,
+    actions: [
+      {
+        name: "Checklist Created",
+        intents: [
+          "travel",
+          "family",
+          "newborn",
+          "event",
+          "work_schedule",
+          "energy_saving",
+          "home_security",
+          "general",
+        ],
+      },
+      {
+        name: "Preparation Guide",
+        intents: ["travel", "family", "newborn", "event", "work_schedule", "home_security"],
+      },
+    ],
+  },
+];
+
+function DeviceActionsPanel({ plan }: { plan: HouseholdPlan }) {
+  const [simulatedActions, setSimulatedActions] = useState<Record<string, boolean>>({});
+  const [simulationMessage, setSimulationMessage] = useState("");
+
+  return (
+    <Card className="mb-4 overflow-hidden border-[#25394c] bg-[#172838] text-white shadow-[0_12px_35px_rgba(23,40,56,0.12)]">
+      <CardHeader className="gap-4 border-b border-white/10 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#f6a623] text-[#172838]">
+            <Activity className="size-5" />
+          </span>
+          <div>
+            <p className="mb-1 text-[10px] font-bold tracking-[0.16em] text-[#f6bd5c]">
+              SIMULATED CONTROL LAYER
+            </p>
+            <CardTitle className="text-white">Device Actions</CardTitle>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <span className="rounded-full border border-white/15 bg-white/[0.07] px-3 py-1.5 text-xs font-medium text-[#d6dee6]">
+            Intent: {intentLabels[plan.intent_category]}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fff3d8] px-3 py-1.5 text-[10px] font-bold tracking-wide text-[#805612]">
+            <span className="size-1.5 rounded-full bg-[#d99b2b]" />
+            SIMULATION ONLY
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-5">
+        <p className="mb-4 text-xs leading-5 text-[#aab8c5]">
+          Suggested states are matched to this plan. No commands are sent and no devices are changed.
+        </p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {simulatedDevices.map((device) => {
+            const Icon = device.icon;
+            const suggestedCount = device.actions.filter((action) =>
+              action.intents.includes(plan.intent_category),
+            ).length;
+            return (
+              <div className="rounded-xl border border-white/10 bg-white/[0.055] p-3.5" key={device.name}>
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Icon className="size-4 shrink-0 text-[#f6bd5c]" />
+                    <h3 className="truncate text-sm font-semibold text-white">{device.name}</h3>
+                  </div>
+                  <span className="shrink-0 text-[10px] text-[#9eafbd]">
+                    {suggestedCount ? `${suggestedCount} suggested` : "Standby"}
+                  </span>
+                </div>
+                <ul className="space-y-2">
+                  {device.actions.map((action) => {
+                    const isSuggested = action.intents.includes(plan.intent_category);
+                    const isReady = device.name === "Bee";
+                    const actionId = `${device.name}:${action.name}`;
+                    const isSimulated = simulatedActions[actionId] ?? false;
+                    return (
+                      <li
+                        className={`flex min-h-10 items-center justify-between gap-2 rounded-lg border px-2.5 py-2 ${
+                          isSimulated
+                            ? "border-[#8fcab0]/40 bg-[#8fcab0]/10"
+                            : isSuggested
+                            ? "border-[#d9ad5e]/35 bg-[#f6a623]/10"
+                            : "border-white/[0.07] bg-black/[0.08]"
+                        }`}
+                        key={action.name}
+                      >
+                        <span className={`min-w-0 text-xs ${isSuggested ? "font-medium text-white" : "text-[#b0bdc8]"}`}>
+                          {action.name}
+                        </span>
+                        {isSuggested ? (
+                          <button
+                            aria-label={`${isSimulated ? "Reset" : "Simulate"} ${action.name}`}
+                            className={`inline-flex min-h-7 shrink-0 items-center gap-1 rounded-md px-2 text-[9px] font-bold uppercase tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 ${
+                              isSimulated
+                                ? "text-[#a7d8bf] hover:bg-white/10"
+                                : "bg-[#f6a623] text-[#172838] hover:bg-[#ffc45c]"
+                            }`}
+                            onClick={() => {
+                              setSimulatedActions((current) => ({
+                                ...current,
+                                [actionId]: !isSimulated,
+                              }));
+                              setSimulationMessage(
+                                isSimulated
+                                  ? `${action.name} simulation reset.`
+                                  : `${action.name} simulated for the ${intentLabels[plan.intent_category]} plan.`,
+                              );
+                            }}
+                            type="button"
+                          >
+                            {isSimulated ? (
+                              <Check aria-hidden="true" className="size-3" />
+                            ) : (
+                              <Play aria-hidden="true" className="size-3" />
+                            )}
+                            {isSimulated ? "Simulated" : "Simulate"}
+                          </button>
+                        ) : (
+                          <span
+                            className={`inline-flex shrink-0 items-center gap-1 text-[9px] font-semibold uppercase tracking-wide ${
+                              isReady ? "text-[#8fcab0]" : "text-[#8393a1]"
+                            }`}
+                          >
+                            {isReady ? (
+                              <Check aria-hidden="true" className="size-3" />
+                            ) : (
+                              <Circle aria-hidden="true" className="size-2" />
+                            )}
+                            {isReady ? "Ready" : "Standby"}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-4 flex items-start gap-2 border-t border-white/10 pt-3 text-[11px] leading-5 text-[#91a2b0]">
+          <ClipboardCheck aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-[#f6bd5c]" />
+          <span>
+            Status is a plan-based simulation for demonstration only. No real device commands are sent.
+            <span aria-live="polite" className="block font-medium text-[#a7d8bf]">
+              {simulationMessage}
+            </span>
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function SectionCard({
   plan,
@@ -368,6 +573,42 @@ export function Dashboard() {
               </span>
             )}
           </div>
+          {activePlan?.ai_summary && (
+            <p className="mb-4 rounded-xl border border-[#e8ebef] bg-white px-4 py-3 text-sm leading-6 text-[#52606d]">
+              {activePlan.ai_summary}
+            </p>
+          )}
+          {activePlan && (
+            <DeviceActionsPanel key={`${activePlan.id}-${activePlan.intent_category}`} plan={activePlan} />
+          )}
+          {activePlan?.alexa_automations?.length ? (
+            <Card className="mb-4 border-[#e8ebef] bg-gradient-to-br from-white to-[#f8f9ff]">
+              <CardHeader className="flex-row items-center gap-3 pb-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#eef0ff] text-[#6570b8]">
+                  <Sparkles className="size-5" />
+                </span>
+                <div>
+                  <CardTitle>Alexa+ Suggested Automations</CardTitle>
+                  <p className="mt-1 text-xs text-[#7c8791]">
+                    Optional routine ideas tailored to this plan. Nothing is enabled automatically.
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {activePlan.alexa_automations.map((automation) => (
+                    <li
+                      className="flex min-h-12 items-center gap-2.5 rounded-xl border border-[#edf0f3] bg-white px-3 py-2.5 text-sm font-medium leading-5 text-[#52606d]"
+                      key={automation}
+                    >
+                      <Zap aria-hidden="true" className="size-4 shrink-0 text-[#bb821f]" />
+                      <span>{automation}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          ) : null}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {sectionDetails.map((section) => (
               <SectionCard key={section.key} plan={activePlan} section={section} isLoading={isLoading} />

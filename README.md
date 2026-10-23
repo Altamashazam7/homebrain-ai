@@ -94,7 +94,11 @@ curl -X POST http://localhost:8000/api/plans \
   -d '{"goal":"I am leaving home for 5 days."}'
 ```
 
-The response includes an id, original goal, timestamp, and `security_plan`, `energy_plan`, and `entertainment_plan` string arrays.
+The response includes an id, original goal, timestamp, classified `intent_category`, `security_plan`, `energy_plan`, and `entertainment_plan` string arrays, an `ai_summary`, and 3-5 `alexa_automations` suggestions. These are optional routine ideas, not device commands; no routines are enabled automatically. Gemini classifies each goal into an intent such as travel, family, newborn, event, work schedule, energy saving, or home security. The prompt and recommendations are tailored to that intent. Without an API key, or if Gemini fails, the backend uses an intent-aware local fallback rather than a generic plan.
+
+The dashboard also displays a **Device Actions** panel with simulated Alexa+, Ring, Fire TV, and Bee states selected from the saved plan intent. Suggested, ready, and standby states are illustrative only; the app does not send commands to real devices.
+
+Backend JSON logs include the submitted goal, detected intent, raw Gemini response when available, final plan JSON, and whether Gemini or the local fallback produced the plan. Goals and model responses may contain personal information; protect access to logs and apply appropriate retention/redaction policies in deployed environments.
 
 ## Testing and checks
 
@@ -121,14 +125,14 @@ npm run build
 - [ ] Select an older history item and confirm its recommendations display.
 - [ ] Submit an empty or too-short goal and confirm it is rejected by API validation.
 - [ ] Stop the API and confirm the frontend surfaces a useful connection error.
-- [ ] If configured, test a Gemini-backed plan; otherwise confirm demo planning works without credentials.
+- [ ] If configured, test a Gemini-backed plan; otherwise confirm intent-aware local planning works without credentials.
 - [ ] Verify the UI and copy do not imply real device control.
 
 ## Common issues
 
 - **Port already in use:** Stop the other service using port `8000` or `3000`, or choose a free port and update the frontend API URL and backend CORS origins.
 - **Frontend cannot reach the API:** Check that the backend is running, `frontend/.env.local` has the correct `NEXT_PUBLIC_API_URL`, and `backend/.env` includes the frontend origin in `CORS_ORIGINS`. Restart Next.js after changing environment variables.
-- **Gemini plan generation fails:** Check the backend-only `GEMINI_API_KEY`, model availability, network access, and backend logs. When Gemini is not configured or a request fails or times out, the app logs the provider failure and uses its deterministic demo planner without changing the API response contract.
+- **Gemini plan generation fails:** Check the backend-only `GEMINI_API_KEY`, model availability, network access, and backend logs. When Gemini is not configured or a request fails or times out, the app logs the provider failure and uses its intent-aware local planner without changing the plan response shape.
 - **SQLite permission or path error:** Run the API from `backend/` for the default relative database path, and ensure that directory is writable. Set an absolute `DATABASE_URL` when running elsewhere.
 - **Python package/import errors:** Activate the backend virtual environment and install `backend/requirements.txt`. Start Uvicorn from `backend/` so `main:app` and the `.env` file resolve correctly.
 - **Node version or missing modules:** Use Node.js 20.9 or later, then run `npm install` from `frontend/`.
