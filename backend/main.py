@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.routes import router
 from app.config import settings
-from app.database.session import Base, engine
+from app.database.session import Base, ensure_schema_compatibility, engine
 # Register the model table before create_all() runs during startup.
 from app.models.plan import HouseholdPlan
 
@@ -25,6 +25,16 @@ class JsonFormatter(logging.Formatter):
         }
         if record.exc_info:
             event["exception"] = self.formatException(record.exc_info)
+        for field in (
+            "goal",
+            "detected_intent",
+            "gemini_raw_response",
+            "final_json_output",
+            "generation_source",
+        ):
+            value = getattr(record, field, None)
+            if value is not None:
+                event[field] = value
         return json.dumps(event)
 
 
@@ -41,6 +51,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     Base.metadata.create_all(bind=engine)
+    ensure_schema_compatibility(engine)
     logger.info("HomeBrain API started")
     yield
     logger.info("HomeBrain API stopped")

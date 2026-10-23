@@ -14,6 +14,9 @@ class HouseholdPlan(Base):
     security_plan: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     energy_plan: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     entertainment_plan: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    ai_summary: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    alexa_automations: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    intent_category: Mapped[str] = mapped_column(String(32), nullable=False, default="general")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )

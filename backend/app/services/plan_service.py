@@ -18,6 +18,9 @@ def save_plan(db: Session, goal: str, content: PlanContent) -> PlanResponse:
         security_plan=content.security_plan,
         energy_plan=content.energy_plan,
         entertainment_plan=content.entertainment_plan,
+        ai_summary=content.ai_summary,
+        alexa_automations=content.alexa_automations,
+        intent_category=content.intent_category,
     )
     try:
         db.add(plan)
