@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     app_name: str = "HomeBrain AI"
     environment: str = "development"
     database_url: str = "sqlite:///./homebrain.db"
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:3000,https://homebrain-ai.vercel.app"
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"
     log_level: str = "INFO"
